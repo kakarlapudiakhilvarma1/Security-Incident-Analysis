@@ -1,0 +1,2 @@
+Incident ID,Date,Type,Description,Impact,Mitigation
+INC-2023-111,3/3/2025,Phishing Attack,DevOps team has received multiple phishing emails claiming to be from HR department to upload the card details for salaty credit.,one employee has clicked on the link and shared the details.,Immediately blocked the transaction and the card further.
