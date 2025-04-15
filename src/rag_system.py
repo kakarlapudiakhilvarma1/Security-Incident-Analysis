@@ -24,7 +24,7 @@ def initialize_rag_system():
     llm = ChatGoogleGenerativeAI(
         model="gemini-1.5-pro",
         temperature=0.2,
-        max_output_tokens=2048,
+        max_output_tokens=1500,
         top_p=0.95,
         top_k=40,
         verbose=True
@@ -42,6 +42,22 @@ def create_vector_db(embeddings, security_incidents):
     db.save_local("faiss_index")
     
     return db
+
+def update_vector_db(embeddings, security_incidents):
+    """Update an existing FAISS vector database with new incidents"""
+    
+    # Try to load existing index
+    existing_db = load_vector_db(embeddings)
+    
+    if existing_db:
+        # Add new texts to the existing database
+        existing_db.add_texts(security_incidents)
+        # Save the updated index
+        existing_db.save_local("faiss_index")
+        return existing_db
+    else:
+        # No existing index, create a new one
+        return create_vector_db(embeddings, security_incidents)
 
 def load_vector_db(embeddings):
     """Load the FAISS vector database from file if it exists"""
