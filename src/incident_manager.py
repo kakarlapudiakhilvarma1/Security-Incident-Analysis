@@ -33,19 +33,12 @@ def save_incident_report(incident_data):
     Mitigation: {incident_data['mitigation']}
     """
 
-    # Check if we already have a database
+    # Initialize RAG components
     embeddings, _ = initialize_rag_system()
-    existing_db = load_vector_db(embeddings)  # This function now includes allow_dangerous_deserialization=True
-
-    if existing_db:
-        # Add the new incident to the existing database
-        existing_db.add_texts([incident_report])
-        existing_db.save_local("faiss_index")
-        st.session_state.db = existing_db
-    else:
-        # Create a new database with just this incident
-        st.session_state.db = FAISS.from_texts([incident_report], embeddings)
-        st.session_state.db.save_local("faiss_index")
+    
+    # Update the vector database with the new incident
+    from src.rag_system import update_vector_db
+    st.session_state.db = update_vector_db(embeddings, [incident_report])
 
     return incident_id
 
@@ -55,10 +48,11 @@ def add_new_incident(incident_data):
         # Save the incident
         incident_id = save_incident_report(incident_data)
         
-        # Initialize RAG components if not already done
-        if not st.session_state.conversation_chain:
-            embeddings, llm = initialize_rag_system()
-            st.session_state.conversation_chain = setup_conversation_chain(llm, st.session_state.db)
+        # Initialize RAG components
+        embeddings, llm = initialize_rag_system()
+        
+        # Make sure to recreate the conversation chain with the updated database
+        st.session_state.conversation_chain = setup_conversation_chain(llm, st.session_state.db)
         
         st.session_state.document_processed = True
         return incident_id
