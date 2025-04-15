@@ -51,6 +51,19 @@ def render_sidebar():
             st.session_state.conversation_history = []
             st.session_state.chat_history = []
             st.success("Chat history cleared")
+            
+        if st.button("Reset Database"):
+            import os
+            if os.path.exists("faiss_index"):
+                try:
+                    import shutil
+                    shutil.rmtree("faiss_index")
+                    st.session_state.db = None
+                    st.session_state.conversation_chain = None
+                    st.session_state.document_processed = False
+                    st.success("Database has been reset")
+                except Exception as e:
+                    st.error(f"Error resetting database: {str(e)}")
         
         # Display system status
         st.subheader("System Status")
@@ -59,10 +72,26 @@ def render_sidebar():
         st.write(f"Chat history entries: {len(st.session_state.chat_history)}")
         
         # Debug section
+        # Debug section
         if st.checkbox("Show Debug Info"):
             st.subheader("Debug Information")
             st.write(f"Database initialized: {st.session_state.db is not None}")
             st.write(f"Conversation chain initialized: {st.session_state.conversation_chain is not None}")
+            
+            # Add option to inspect database contents
+            if st.button("Inspect Database Contents") and st.session_state.db:
+                with st.spinner("Retrieving database content samples..."):
+                    try:
+                        # Get a sample of the database contents
+                        sample_query = "security incident"
+                        retriever = st.session_state.db.as_retriever(search_kwargs={"k": 10})
+                        docs = retriever.get_relevant_documents(sample_query)
+                        
+                        st.write(f"Found {len(docs)} documents in database. Showing samples:")
+                        for i, doc in enumerate(docs):
+                            st.text_area(f"Document {i+1}", doc.page_content, height=200)
+                    except Exception as e:
+                        st.error(f"Error inspecting database: {str(e)}")
 
 def handle_data_source_selection(data_option):
     """Handle the data source selection in the sidebar"""
