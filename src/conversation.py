@@ -33,6 +33,8 @@ def setup_conversation_chain(llm, db):
     4. Severity assessment
     
     Your analysis should be professional, detailed, and actionable.
+    Only provide information based on the retrieved context. If the information about the asked topic 
+    is not available in the context, clearly state that you don't have that information.
     """
     
     custom_prompt = PromptTemplate(
@@ -40,10 +42,10 @@ def setup_conversation_chain(llm, db):
         template=template
     )
     
-    # Create ConversationalRetrievalChain
+    # Create ConversationalRetrievalChain with increased k value
     conversation_chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
-        retriever=db.as_retriever(search_kwargs={"k": 5}),
+        retriever=db.as_retriever(search_kwargs={"k": 10}),  # Increased from 5 to 10
         memory=memory,
         combine_docs_chain_kwargs={"prompt": custom_prompt},
         return_source_documents=False  # Disable returning source documents to avoid UUID issues
@@ -56,6 +58,18 @@ def process_user_query(user_query):
     
     if st.session_state.conversation_chain:
         try:
+            # Debug: Get documents relevant to the query
+            retriever = st.session_state.db.as_retriever(search_kwargs={"k": 5})
+            retrieved_docs = retriever.get_relevant_documents(user_query)
+            
+            # Print debugging info about retrieved documents
+            st.write("### Debug: Retrieved Documents")
+            st.write(f"Retrieved {len(retrieved_docs)} documents")
+            for i, doc in enumerate(retrieved_docs):
+                st.write(f"**Document {i+1}:**")
+                st.write(doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content)
+                st.write("---")
+            
             # Convert UUID objects to strings in the chat history
             safe_chat_history = []
             for msg_pair in st.session_state.chat_history:
