@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 from src.rag_system import create_vector_db, initialize_rag_system, load_vector_db
 from src.conversation import setup_conversation_chain
+import uuid
 
 def load_sample_data():
     """Load sample security incident data"""
@@ -100,15 +101,26 @@ def process_uploaded_file(uploaded_file):
         embeddings, llm = initialize_rag_system()
         
         # Process uploaded file
+        incidents = []
         if uploaded_file.type == "application/json":
             data = json.loads(uploaded_file.read())
-            incidents = [json.dumps(incident) for incident in data]
+            for incident in data:
+                # Format each incident as proper text
+                incident_text = format_incident_for_embedding(incident)
+                incidents.append(incident_text)
         else:  # CSV
             df = pd.read_csv(uploaded_file)
-            incidents = df.apply(lambda row: row.to_json(), axis=1).tolist()
+            for _, row in df.iterrows():
+                # Format each row as a proper incident text
+                incident_text = format_incident_for_embedding(dict(row))
+                incidents.append(incident_text)
         
-        # Create vector database
-        st.session_state.db = create_vector_db(embeddings, incidents)
+        # Log information about the incidents
+        st.info(f"Processed {len(incidents)} incidents from uploaded file")
+        
+        # Update the vector database with new incidents
+        from src.rag_system import update_vector_db
+        st.session_state.db = update_vector_db(embeddings, incidents)
         
         # Set up conversation chain
         st.session_state.conversation_chain = setup_conversation_chain(llm, st.session_state.db)
@@ -120,6 +132,27 @@ def process_uploaded_file(uploaded_file):
         import traceback
         st.error(traceback.format_exc())
         return False
+
+def format_incident_for_embedding(incident_data):
+    """Format incident data as text for embedding"""
+    incident_id = incident_data.get('Incident ID', incident_data.get('incident_id', f'INC-AUTO-{uuid.uuid4().hex[:8]}'))
+    date = incident_data.get('Date', incident_data.get('date', 'Unknown'))
+    incident_type = incident_data.get('Type', incident_data.get('type', 'Unknown'))
+    description = incident_data.get('Description', incident_data.get('description', ''))
+    impact = incident_data.get('Impact', incident_data.get('impact', ''))
+    mitigation = incident_data.get('Mitigation', incident_data.get('mitigation', ''))
+    
+    # Create the incident report text
+    incident_report = f"""
+    Incident ID: {incident_id}
+    Date: {date}
+    Type: {incident_type}
+    Description: {description}
+    Impact: {impact}
+    Mitigation: {mitigation}
+    """
+    
+    return incident_report
 
 def load_existing_index():
     """Load existing FAISS index and initialize the RAG system"""
